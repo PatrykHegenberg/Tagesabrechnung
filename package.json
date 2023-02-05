@@ -1,0 +1,22 @@
+{
+    "name": "tagesabrechnung",
+    "version": "1.0.0",
+    "description": "Dies ist eine Software zum Berechnen des Tagesumsatzes",
+    "main": "main.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "electron ."
+    },
+    "author": "Patryk Hegenberg",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^22.2.0",
+        "electron-reloader": "^1.2.3"
+    },
+    "dependencies": {
+        "@electron/rebuild": "^3.2.10",
+        "electron-rebuild": "^3.2.9",
+        "sqlite-electron": "^2.2.5",
+        "sqlite3": "^5.1.4"
+    }
+}
