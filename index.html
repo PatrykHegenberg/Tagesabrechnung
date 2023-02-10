@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="./style.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self';" />
     <title>Tagesabrechnung</title>
@@ -19,13 +19,16 @@
                 <div class="menu">
                     <button id="show-button" type="button">Zeige Einträge</button>
                     <button id="in-button" type="button">Neuer Eintrag</button>
-                    <button id="print-button" type="button">Einträge drucken</button>
                 </div>
             </div>
         </div>
 
         <div id="Eingabe" class="screen modal">
             <h1>Eingabe Tagesdaten</h1>
+            <div style="margin-top: 20px;">
+                <button id="back-button" type="button">Zurück</button>
+                <button id="save-button" type="button">Speichern</button>
+            </div>
             <p>Hier kannst du deine Daten für den heutigen Tag eingeben.</p>
             <div class="Eingaben">
                 <div>
@@ -121,18 +124,14 @@
                     <input type="text" pattern="\d+(\.\d{2})?" id="tagesbilanz" value="0.00">
                 </div>
             </form>
-            <div style="margin-top: 20px;">
-                <button id="back-button" type="button">Zurück</button>
-                <button id="save-button" type="button">Speichern</button>
-            </div>
         </div>
 
         <div id="Ausgaben" class="screen modal Ausgaben">
             <h1>Ausgabe</h1>
             <button id="back2-button" type="button">Zurück</button>
+            <button id="print-button" type="button">Einträge drucken</button>
             <div id="anzeige">
                 <table id="table" class="Ausgaben">
-
                 </table>
             </div>
         </div>

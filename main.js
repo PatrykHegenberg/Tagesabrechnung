@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 require('electron-reloader')(module);
-const sqlite = require('sqlite-electron');
+//const sqlite = require('sqlite-electron');
 
 const path = require('path');
 const sqlite3 = require('sqlite3');
