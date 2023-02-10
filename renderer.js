@@ -88,7 +88,10 @@ const zurueckKasse = () => {
 const Einzahlung = () => {
     const gesamtBar = parseFloat(document.getElementById("gesamtBar").value);
     const zurueckKasse = parseFloat(document.getElementById("zurueckKasse").value);
-    document.getElementById("aufKonto").value = (gesamtBar - zurueckKasse).toFixed(2);
+    let returnValue = gesamtBar - zurueckKasse;
+    (returnValue < 0 ? returnValue = 0.00 : returnValue.toFixed(2));
+    document.getElementById("aufKonto").value = returnValue;
+    
 }
 
 const createListeners = () => {
