@@ -1,5 +1,4 @@
 let abrechnungen = window.api.invoke('db-query', "SELECT * FROM abrechnungen").then(function(res) {
-    console.log(res);
     return res;
 })
     .catch(function(err) {
@@ -75,7 +74,7 @@ const Tagesbilanz = () => {
     const sonderIn = parseFloat(document.getElementById("Sondereingabe").value);
     const stornoWenig = parseFloat(document.getElementById("Storno-wenig").value);
     const stornoViel = parseFloat(document.getElementById("Storno-viel").value);
-
+    const last = lastEntry();
     const result = gesamtMitEc - zBonBericht + sonderOut - sonderIn - stornoWenig + stornoViel;
     document.getElementById("tagesbilanz").value = result.toFixed(2);
 }
@@ -128,4 +127,10 @@ const anzeige = () => {
     });
 }
 
+const lastEntry = () => {
+    const lastAbrechnung = window.api.invoke('db-query', "SELECT * FROM abrechnungen ORDER BY datum DESC Limit 1").then(function(res) {
+        return res;
+    });
+    return lastAbrechnung;
+}
 createListeners();
