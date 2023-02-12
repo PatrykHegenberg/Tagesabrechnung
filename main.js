@@ -1,6 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 require('electron-reloader')(module);
-//const sqlite = require('sqlite-electron');
 
 const path = require('path');
 const sqlite3 = require('sqlite3');
@@ -40,11 +39,11 @@ app.on('window-all-closed', () => {
 })
 
 ipcMain.handle('databasePath', async (event, dbPath) => {
-    return await sqlite.setdbPath(dbPath)
+    return await sqlite3.setdbPath(dbPath)
 });
 
 ipcMain.handle('executeQuery', async (event, query, fetch, value) => {
-  return await sqlite.executeQuery(query, fetch, value);
+  return await sqlite3.executeQuery(query, fetch, value);
 });
 
 db.serialize(() => {

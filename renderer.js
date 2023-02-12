@@ -67,15 +67,15 @@ const getGesamtMitEC = () => {
     document.getElementById("gesamtBarEC").value = (ec + gesamtBar).toFixed(2);
 }
 
-const Tagesbilanz = () => {
+const Tagesbilanz = async () => {
     const gesamtMitEc = parseFloat(document.getElementById("gesamtBarEC").value);
     const zBonBericht = parseFloat(document.getElementById("zBon-Bericht").value);
     const sonderOut = parseFloat(document.getElementById("Sonderausgabe").value);
     const sonderIn = parseFloat(document.getElementById("Sondereingabe").value);
     const stornoWenig = parseFloat(document.getElementById("Storno-wenig").value);
     const stornoViel = parseFloat(document.getElementById("Storno-viel").value);
-    const last = lastEntry();
-    const result = gesamtMitEc - zBonBericht + sonderOut - sonderIn - stornoWenig + stornoViel;
+    const last = await lastEntry();
+    const result = gesamtMitEc + last - zBonBericht + sonderOut - sonderIn - stornoWenig + stornoViel;
     document.getElementById("tagesbilanz").value = result.toFixed(2);
 }
 const zurueckKasse = () => {
@@ -90,7 +90,7 @@ const Einzahlung = () => {
     const zurueckKasse = parseFloat(document.getElementById("zurueckKasse").value);
     let returnValue = gesamtBar - zurueckKasse;
     (returnValue < 0 ? returnValue = 0.00 : returnValue.toFixed(2));
-    document.getElementById("aufKonto").value = returnValue;
+    document.getElementById("aufKonto").value = (Math.floor(returnValue/5)*5).toFixed(2);
     
 }
 
@@ -130,10 +130,10 @@ const anzeige = () => {
     });
 }
 
-const lastEntry = () => {
-    const lastAbrechnung = window.api.invoke('db-query', "SELECT * FROM abrechnungen ORDER BY datum DESC Limit 1").then(function(res) {
-        return res;
+const lastEntry = async () => {
+    const lastAbrechnung = await window.api.invoke('db-query', "SELECT * FROM abrechnungen ORDER BY datum DESC Limit 1").then(function(res) {
+        return res[0].tagesbilanz;
     });
-    return lastAbrechnung;
+    return parseFloat(lastAbrechnung);
 }
 createListeners();
