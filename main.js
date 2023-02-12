@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 require('electron-reloader')(module);
-
+if (require('electron-squirrel-startup')) app.quit();
 const path = require('path');
 const sqlite3 = require('sqlite3');
 const db = new sqlite3.Database('./abrechnung.db');
