@@ -4,15 +4,51 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
+	"strconv"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/mobile"
 	"fyne.io/fyne/v2/widget"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type numericalEntry struct {
+	widget.Entry
+}
+
+func newNumericalEntry() *numericalEntry {
+	entry := &numericalEntry{}
+	entry.ExtendBaseWidget(entry)
+	return entry
+}
+
+func (e *numericalEntry) TypedRune(r rune) {
+	if (r >= '0' && r <= '9') || r == '.' || r == ',' {
+		e.Entry.TypedRune(r)
+	}
+}
+
+func (e *numericalEntry) TypedShortcut(shortcut fyne.Shortcut) {
+	paste, ok := shortcut.(*fyne.ShortcutPaste)
+	if !ok {
+		e.Entry.TypedShortcut(shortcut)
+		return
+	}
+
+	content := paste.Clipboard.Content()
+	if _, err := strconv.ParseFloat(content, 64); err == nil {
+		e.Entry.TypedShortcut(shortcut)
+	}
+}
+
+func (e *numericalEntry) Keyboard() mobile.KeyboardType {
+	return mobile.NumberKeyboard
+}
 
 func main() {
 	myApp := app.New()
@@ -74,7 +110,6 @@ func main() {
 	// Daten aus der Datenbank in eine Liste konvertieren
 	var data [][]string
 	for rows.Next() {
-		fmt.Println("In der Schleife")
 		var id sql.NullInt64
 		var datum string
 		var einzahlung, tagesbilanz, bargeld float64
@@ -94,6 +129,21 @@ func main() {
 		data = append(data, []string{idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld)})
 	}
 
+	lastBilanz := ""
+	last, err := db.Query("SELECT tagesbilanz FROM abrechnungen ORDER BY datum DESC Limit 1")
+	if err != nil {
+		log.Fatal("Can't query last entry ", err)
+	}
+	defer last.Close()
+	for last.Next() {
+		var tagesbilanz float64
+		err := last.Scan(&tagesbilanz)
+		if err != nil {
+			log.Fatal(err)
+		}
+		lastBilanz = fmt.Sprintf("%.2f", tagesbilanz)
+	}
+	fmt.Println(lastBilanz)
 	// Funktion zur Erstellung leerer CanvasObject für die Tabelle
 	createEmptyTableCell := func() fyne.CanvasObject {
 		return widget.NewLabel(".....................")
@@ -113,16 +163,40 @@ func main() {
 		createEmptyTableCell, // Leere CanvasObject-Funktion
 		createTableCell,      // Funktion zur Erstellung der Zelleninhalte
 	)
-	muenzgeld := widget.NewEntry()
-	fuenfScheine := widget.NewEntry()
-	zehnScheine := widget.NewEntry()
-	zwanzigScheine := widget.NewEntry()
-	fuenfzigScheine := widget.NewEntry()
-	hundertScheine := widget.NewEntry()
-	zweiHundertScheine := widget.NewEntry()
-	papierGesamt := widget.NewEntry()
-	barGesamt := widget.NewEntry()
-	ecGesamt := widget.NewEntry()
+
+	papierGesamt := newNumericalEntry()
+	papierGesamt.SetPlaceHolder("0.00")
+	barGesamt := newNumericalEntry()
+	barGesamt.SetPlaceHolder("0.00")
+	ecGesamt := newNumericalEntry()
+	ecGesamt.SetPlaceHolder("0.00")
+	summeRollen := newNumericalEntry()
+	summeRollen.SetPlaceHolder("0.00")
+	summeKarte := newNumericalEntry()
+	summeKarte.SetPlaceHolder("0.00")
+	zBon := newNumericalEntry()
+	sonderAus := newNumericalEntry()
+	sonderEin := newNumericalEntry()
+	stornoViel := newNumericalEntry()
+	stornoWenig := newNumericalEntry()
+	papierZurueck := newNumericalEntry()
+	einzahlung := newNumericalEntry()
+	tagesbilanz := newNumericalEntry()
+
+	muenzgeld := newNumericalEntry()
+	muenzgeld.SetPlaceHolder("0.00")
+	fuenfScheine := newNumericalEntry()
+	fuenfScheine.SetPlaceHolder("0")
+	zehnScheine := newNumericalEntry()
+	zehnScheine.SetPlaceHolder("0")
+	zwanzigScheine := newNumericalEntry()
+	zwanzigScheine.SetPlaceHolder("0")
+	fuenfzigScheine := newNumericalEntry()
+	fuenfzigScheine.SetPlaceHolder("0")
+	hundertScheine := newNumericalEntry()
+	hundertScheine.SetPlaceHolder("0")
+	zweiHundertScheine := newNumericalEntry()
+	zweiHundertScheine.SetPlaceHolder("0")
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{
@@ -137,18 +211,7 @@ func main() {
 			{Text: "Gesamtes Bargeld:", Widget: barGesamt},
 			{Text: "Gesamtes Bargeld mit EC:", Widget: ecGesamt},
 		},
-		OnSubmit: func() {
-			log.Println("Form submitted:", muenzgeld.Text)
-		},
 	}
-
-	summeRollen := widget.NewEntry()
-	summeKarte := widget.NewEntry()
-	zBon := widget.NewEntry()
-	sonderAus := widget.NewEntry()
-	sonderEin := widget.NewEntry()
-	stornoViel := widget.NewEntry()
-	stornoWenig := widget.NewEntry()
 
 	form2 := &widget.Form{
 		Items: []*widget.FormItem{
@@ -162,20 +225,23 @@ func main() {
 		},
 	}
 
-	papierZurueck := widget.NewEntry()
-	einzahlung := widget.NewEntry()
-	tagesbilanz := widget.NewEntry()
-
 	form3 := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Papiergeld zurück in die Kasse", Widget: papierZurueck},
 			{Text: "Einzahlung auf Konto", Widget: einzahlung},
 			{Text: "Tagesbilanz vgl- Einnahme zu zBon", Widget: tagesbilanz},
 		},
+		OnSubmit: func() {
+			updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			updatePapierGesamt(fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, papierGesamt)
+			updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
+			calcTagesbilanz(ecGesamt.Text, zBon.Text, sonderAus.Text, sonderEin.Text, stornoWenig.Text, stornoViel.Text, lastBilanz, tagesbilanz)
+			zurueckKasse(muenzgeld.Text, summeRollen.Text, papierZurueck)
+		},
 	}
 
 	// Flexibles Layout erstellen und die Tabelle hinzufügen
-	forms := container.NewHBox(form, form2, form3)
+	forms := container.NewGridWithColumns(3, form, form2, form3)
 	formBox := widget.NewCard("Neuer Eintrag", "", forms)
 	tableBox := widget.NewCard("Einträge", "", table)
 	mainContent := container.NewVBox(
@@ -200,4 +266,161 @@ func tableExists(db *sql.DB, tableName string) bool {
 		log.Fatal(err)
 	}
 	return true
+}
+
+func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert string, barGesamt fyne.Widget) error {
+	fmt.Println(rollen)
+	rollenf, err := convertToFloat(rollen)
+	if err != nil {
+		log.Fatal("Error converting Rollengeld", err)
+	}
+	muenzf, err := convertToFloat(muenz)
+	if err != nil {
+		log.Fatal("Error converting Münzgeld", err)
+	}
+	fuenff, err := convertToInt(fuenf)
+	if err != nil {
+		log.Fatal("Error converting Fünf", err)
+	}
+	zehnf, err := convertToInt(zehn)
+	if err != nil {
+		log.Fatal("Error converting Zehn", err)
+	}
+	zwanzigf, err := convertToInt(zwanzig)
+	if err != nil {
+		log.Fatal("Error converting Zwanzig", err)
+	}
+	fuenfzigf, err := convertToInt(fuenfzig)
+	if err != nil {
+		log.Fatal("Error converting Fünfzig", err)
+	}
+	hundertf, err := convertToInt(hundert)
+	if err != nil {
+		log.Fatal("Error converting Hundert", err)
+	}
+	zweihundertf, err := convertToInt(zweihundert)
+	if err != nil {
+		log.Fatal("Error converting Zweihundert", err)
+	}
+	result := rollenf + muenzf + float64(fuenff*5) + float64(zehnf*10) + float64(zwanzigf*20) + float64(fuenfzigf*50) + float64(hundertf*100) + float64(zweihundertf*200)
+
+	barGesamt.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
+	return nil
+}
+
+func updatePapierGesamt(fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert string, papierGesamt fyne.Widget) error {
+	fuenff, err := convertToInt(fuenf)
+	if err != nil {
+		log.Fatal("Error converting Fünf", err)
+	}
+	zehnf, err := convertToInt(zehn)
+	if err != nil {
+		log.Fatal("Error converting Zehn", err)
+	}
+	zwanzigf, err := convertToInt(zwanzig)
+	if err != nil {
+		log.Fatal("Error converting Zwanzig", err)
+	}
+	fuenfzigf, err := convertToInt(fuenfzig)
+	if err != nil {
+		log.Fatal("Error converting Fünfzig", err)
+	}
+	hundertf, err := convertToInt(hundert)
+	if err != nil {
+		log.Fatal("Error converting Hundert", err)
+	}
+	zweihundertf, err := convertToInt(zweihundert)
+	if err != nil {
+		log.Fatal("Error converting Zweihundert", err)
+	}
+	result := float64(fuenff*5) + float64(zehnf*10) + float64(zwanzigf*20) + float64(fuenfzigf*50) + float64(hundertf*100) + float64(zweihundertf*200)
+
+	papierGesamt.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
+	return nil
+}
+func updateEcGesamt(bar, ec string, ecGesamt fyne.Widget) error {
+	barf, err := convertToFloat(bar)
+	if err != nil {
+		log.Fatal("Error converting BarGesamt", err)
+	}
+	ecf, err := convertToFloat(ec)
+	if err != nil {
+		log.Fatal("Error converting EC", err)
+	}
+	result := barf + ecf
+	ecGesamt.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
+	return nil
+}
+
+func convertToFloat(text string) (float64, error) {
+	if text != "" {
+		result, err := strconv.ParseFloat(text, 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return result, nil
+	}
+	return 0.00, nil
+}
+
+func convertToInt(text string) (int, error) {
+	if text != "" {
+		result, err := strconv.Atoi(text)
+		if err != nil {
+			log.Fatal(err)
+			return 0.00, err
+		}
+		return result, nil
+	}
+	return 0.00, nil
+}
+
+func calcTagesbilanz(ecGesamt, zBon, sonderOut, sonderIn, stornoWenig, stornoViel, last string, tagesbilanz fyne.Widget) error {
+	ecGesamtf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	zBonf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sonderOutf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sonderInf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	stornoWenigf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	stornoVielf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lastf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	result := ecGesamtf + lastf - zBonf + sonderOutf - sonderInf - stornoWenigf + stornoVielf
+	tagesbilanz.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
+
+	return nil
+}
+
+func zurueckKasse(muenz, rollen string, zurueck fyne.Widget) error {
+	muenzf, err := convertToFloat(muenz)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rollenf, err := convertToFloat(rollen)
+	if err != nil {
+		log.Fatal(err)
+	}
+	result := 300.00 - muenzf - rollenf
+	zurueckKasse := float64(math.Floor((result / 5)) * 5)
+	zurueck.(*numericalEntry).SetText(fmt.Sprintf("%.2f", zurueckKasse))
+	return nil
 }
