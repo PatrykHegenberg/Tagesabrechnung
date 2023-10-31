@@ -1,3 +1,7 @@
+/* Dies ist ein Programm zur berechnung der Tagesbilanz.
+* Erstellt von Patryk Hegenberg
+* EMail: patrykhegenberg@gmail.com
+ */
 package main
 
 import (
@@ -50,6 +54,7 @@ func (e *numericalEntry) Keyboard() mobile.KeyboardType {
 	return mobile.NumberKeyboard
 }
 
+// TODO: main function needs to be refactored to be more readable and maintainable
 func main() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Tagesabrechnung")
@@ -211,9 +216,18 @@ func main() {
 			{Text: "200€ Scheine:", Widget: zweiHundertScheine},
 		},
 		OnSubmit: func() {
-			updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
-			updatePapierGesamt(fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, papierGesamt)
-			updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
+			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = updatePapierGesamt(fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, papierGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
 		},
 	}
 	form.SubmitText = "Zwischenberechnung"
@@ -229,12 +243,30 @@ func main() {
 			{Text: "Storno - zu wenig", Widget: stornoWenig},
 		},
 		OnSubmit: func() {
-			updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
-			updatePapierGesamt(fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, papierGesamt)
-			updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
-			calcTagesbilanz(ecGesamt.Text, zBon.Text, sonderAus.Text, sonderEin.Text, stornoWenig.Text, stornoViel.Text, lastBilanz, tagesbilanz)
-			zurueckKasse(muenzgeld.Text, summeRollen.Text, papierZurueck)
-			Einzahlung(barGesamt.Text, papierZurueck.Text, einzahlung)
+			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = updatePapierGesamt(fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, papierGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = calcTagesbilanz(ecGesamt.Text, zBon.Text, sonderAus.Text, sonderEin.Text, stornoWenig.Text, stornoViel.Text, lastBilanz, tagesbilanz)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = zurueckKasse(muenzgeld.Text, summeRollen.Text, papierZurueck)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = Einzahlung(barGesamt.Text, papierZurueck.Text, einzahlung)
+			if err != nil {
+				log.Fatal(err)
+			}
 		},
 	}
 	form2.SubmitText = "Berechnen"
@@ -360,6 +392,7 @@ func updatePapierGesamt(fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert str
 	papierGesamt.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
 	return nil
 }
+
 func updateEcGesamt(bar, ec string, ecGesamt fyne.Widget) error {
 	barf, err := convertToFloat(bar)
 	if err != nil {
@@ -400,31 +433,31 @@ func convertToInt(text string) (int, error) {
 func calcTagesbilanz(ecGesamt, zBon, sonderOut, sonderIn, stornoWenig, stornoViel, last string, tagesbilanz fyne.Widget) error {
 	ecGesamtf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	zBonf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	sonderOutf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	sonderInf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	stornoWenigf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	stornoVielf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	lastf, err := convertToFloat(ecGesamt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	result := ecGesamtf + lastf - zBonf + sonderOutf - sonderInf - stornoWenigf + stornoVielf
 	tagesbilanz.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
@@ -435,11 +468,11 @@ func calcTagesbilanz(ecGesamt, zBon, sonderOut, sonderIn, stornoWenig, stornoVie
 func zurueckKasse(muenz, rollen string, zurueck fyne.Widget) error {
 	muenzf, err := convertToFloat(muenz)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	rollenf, err := convertToFloat(rollen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	result := 300.00 - muenzf - rollenf
 	zurueckKasse := float64(math.Floor((result / 5)) * 5)
@@ -450,11 +483,11 @@ func zurueckKasse(muenz, rollen string, zurueck fyne.Widget) error {
 func Einzahlung(gesamtBar, zurueckKasse string, einzahlung fyne.Widget) error {
 	barf, err := convertToFloat(gesamtBar)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	kassef, err := convertToFloat(zurueckKasse)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	result := math.Floor((barf-kassef)/5) * 5
 	if result < 0 {
