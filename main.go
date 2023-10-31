@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"strconv"
 	"time"
 
@@ -54,7 +55,15 @@ func (e *numericalEntry) Keyboard() mobile.KeyboardType {
 	return mobile.NumberKeyboard
 }
 
-// TODO: main function needs to be refactored to be more readable and maintainable
+func checkSqliteExistence() {
+	// this function checks if the file abrechnung.db exists
+	// and creates it if it doesn't
+	_, err := os.Stat("./abrechnung.db")
+	if os.IsNotExist(err) {
+		os.Create("abrechnung.db")
+	}
+}
+
 func main() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Tagesabrechnung")
@@ -69,99 +78,24 @@ func main() {
 	// Prüfen, ob die Tabelle vorhanden ist
 	tableExists := tableExists(db, "abrechnungen")
 	if !tableExists {
-		// Wenn die Tabelle nicht vorhanden ist, sie erstellen
-		createTableQuery := `
-			CREATE TABLE abrechnungen (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				datum TEXT,
-				einzahlung REAL,
-				tagesbilanz REAL,
-				bargeld REAL
-			);
-		`
-		_, err := db.Exec(createTableQuery)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Datum des Vortags im Format "YYYY-MM-DD" erhalten
-		yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
-		// Mit einem ersten Eintrag befüllen
-		insertDataQuery := `
-			INSERT INTO abrechnungen (datum, einzahlung, tagesbilanz, bargeld)
-			VALUES (? , 0.00, 0.00, 300.00);
-		`
-		_, err = db.Exec(insertDataQuery, yesterday)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fmt.Println("Tabelle erstellt und mit Daten befüllt.")
+		createTable(db)
 	} else {
 		fmt.Println("Tabelle existiert bereits.")
 	}
 
-	rows, err := db.Query("SELECT * FROM abrechnungen")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
+	data := getTableData(db)
+	lastBilanz := getLastBilanz(db)
+	table := createTableWidget(data)
 
-	// Daten aus der Datenbank in eine Liste konvertieren
-	var data [][]string
-	for rows.Next() {
-		var id sql.NullInt64
-		var datum string
-		var einzahlung, tagesbilanz, bargeld float64
-		err := rows.Scan(&id, &datum, &einzahlung, &tagesbilanz, &bargeld)
-		if err != nil {
-			log.Fatal(err)
-		}
+	mainContent := createMainContent(db, table, lastBilanz)
 
-		var idString string
-		if id.Valid {
-			idString = fmt.Sprintf("%d", id.Int64)
-		} else {
-			idString = "NULL"
-		}
+	myWindow.SetContent(mainContent)
+	myWindow.Resize(fyne.NewSize(1000, 600))
+	myWindow.ShowAndRun()
+}
 
-		fmt.Println(idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld))
-		data = append(data, []string{idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld)})
-	}
-
-	lastBilanz := ""
-	last, err := db.Query("SELECT tagesbilanz FROM abrechnungen ORDER BY datum DESC Limit 1")
-	if err != nil {
-		log.Fatal("Can't query last entry ", err)
-	}
-	defer last.Close()
-	for last.Next() {
-		var tagesbilanz float64
-		err := last.Scan(&tagesbilanz)
-		if err != nil {
-			log.Fatal(err)
-		}
-		lastBilanz = fmt.Sprintf("%.2f", tagesbilanz)
-	}
-	// Funktion zur Erstellung leerer CanvasObject für die Tabelle
-	createEmptyTableCell := func() fyne.CanvasObject {
-		return widget.NewLabel(".....................")
-	}
-
-	// Funktion zur Erstellung der Zelleninhalte für die Tabelle
-	createTableCell := func(id widget.TableCellID, content fyne.CanvasObject) {
-		content.(*widget.Label).SetText(data[id.Row][id.Col])
-	}
-
-	// Tabelle erstellen
-	table := widget.NewTable(
-		func() (int, int) {
-			return len(data), len(data[0])
-		},
-		createEmptyTableCell, // Leere CanvasObject-Funktion
-		createTableCell,      // Funktion zur Erstellung der Zelleninhalte
-	)
-
+// TODO: createMainContent functions needs to be cleaned up to make it more readable and maintainable
+func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne.Container {
 	papierGesamt := newNumericalEntry()
 	papierGesamt.SetPlaceHolder("0.00")
 	barGesamt := newNumericalEntry()
@@ -184,7 +118,6 @@ func main() {
 	stornoWenig.SetPlaceHolder("0.00")
 	papierZurueck := newNumericalEntry()
 	papierZurueck.SetPlaceHolder("0.00")
-	papierZurueck.Disable()
 	einzahlung := newNumericalEntry()
 	einzahlung.SetPlaceHolder("0.00")
 	tagesbilanz := newNumericalEntry()
@@ -207,7 +140,7 @@ func main() {
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{
-			{Text: "Gesamtes Münzgeld", Widget: muenzgeld},
+			{Text: "Münzgeld", Widget: muenzgeld},
 			{Text: "5€ Scheine", Widget: fuenfScheine},
 			{Text: "10€ Scheine", Widget: zehnScheine},
 			{Text: "20€ Scheine:", Widget: zwanzigScheine},
@@ -237,8 +170,8 @@ func main() {
 			{Text: "Summe Rollengeld", Widget: summeRollen},
 			{Text: "Summe Kartenzahlung", Widget: summeKarte},
 			{Text: "zBon Kassenbericht", Widget: zBon},
-			{Text: "Sonderausgabe aus Kasse", Widget: sonderAus},
-			{Text: "Sondereingabe in Kasse", Widget: sonderEin},
+			{Text: "Sonder aus Kasse", Widget: sonderAus},
+			{Text: "Sonder in Kasse", Widget: sonderEin},
 			{Text: "Storno - zu viel", Widget: stornoViel},
 			{Text: "Storno - zu wenig", Widget: stornoWenig},
 		},
@@ -303,10 +236,46 @@ func main() {
 		formBox,
 		tableBox,
 	)
+	return mainContent
+}
 
-	myWindow.SetContent(mainContent)
-	myWindow.Resize(fyne.NewSize(800, 600))
-	myWindow.ShowAndRun()
+func createTableWidget(data [][]string) *widget.Table {
+	createEmptyTableCell := func() fyne.CanvasObject {
+		return widget.NewLabel(".....................")
+	}
+
+	// Funktion zur Erstellung der Zelleninhalte für die Tabelle
+	createTableCell := func(id widget.TableCellID, content fyne.CanvasObject) {
+		content.(*widget.Label).SetText(data[id.Row][id.Col])
+	}
+
+	// Tabelle erstellen
+	table := widget.NewTable(
+		func() (int, int) {
+			return len(data), len(data[0])
+		},
+		createEmptyTableCell, // Leere CanvasObject-Funktion
+		createTableCell,      // Funktion zur Erstellung der Zelleninhalte
+	)
+	return table
+}
+
+func getLastBilanz(db *sql.DB) string {
+	lastBilanz := ""
+	last, err := db.Query("SELECT tagesbilanz FROM abrechnungen ORDER BY datum DESC Limit 1")
+	if err != nil {
+		log.Fatal("Can't query last entry ", err)
+	}
+	defer last.Close()
+	for last.Next() {
+		var tagesbilanz float64
+		err := last.Scan(&tagesbilanz)
+		if err != nil {
+			log.Fatal(err)
+		}
+		lastBilanz = fmt.Sprintf("%.2f", tagesbilanz)
+	}
+	return lastBilanz
 }
 
 // Funktion zur Überprüfung, ob eine Tabelle in der Datenbank existiert
@@ -321,6 +290,68 @@ func tableExists(db *sql.DB, tableName string) bool {
 		log.Fatal(err)
 	}
 	return true
+}
+
+func createTable(db *sql.DB) {
+	// Wenn die Tabelle nicht vorhanden ist, sie erstellen
+	createTableQuery := `
+			CREATE TABLE abrechnungen (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				datum TEXT,
+				einzahlung REAL,
+				tagesbilanz REAL,
+				bargeld REAL
+			);
+		`
+	_, err := db.Exec(createTableQuery)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Datum des Vortags im Format "YYYY-MM-DD" erhalten
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	// Mit einem ersten Eintrag befüllen
+	insertDataQuery := `
+			INSERT INTO abrechnungen (datum, einzahlung, tagesbilanz, bargeld)
+			VALUES (? , 0.00, 0.00, 300.00);
+		`
+	_, err = db.Exec(insertDataQuery, yesterday)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Tabelle erstellt und mit Daten befüllt.")
+}
+
+func getTableData(db *sql.DB) [][]string {
+	rows, err := db.Query("SELECT * FROM abrechnungen")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	// Daten aus der Datenbank in eine Liste konvertieren
+	var data [][]string
+	for rows.Next() {
+		var id sql.NullInt64
+		var datum string
+		var einzahlung, tagesbilanz, bargeld float64
+		err := rows.Scan(&id, &datum, &einzahlung, &tagesbilanz, &bargeld)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var idString string
+		if id.Valid {
+			idString = fmt.Sprintf("%d", id.Int64)
+		} else {
+			idString = "NULL"
+		}
+
+		fmt.Println(idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld))
+		data = append(data, []string{idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld)})
+	}
+	return data
 }
 
 func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert string, barGesamt fyne.Widget) error {
