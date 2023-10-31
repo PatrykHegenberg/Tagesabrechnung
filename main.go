@@ -26,9 +26,14 @@ type numericalEntry struct {
 	widget.Entry
 }
 
-func newNumericalEntry() *numericalEntry {
+func newNumericalEntry(text string) *numericalEntry {
 	entry := &numericalEntry{}
 	entry.ExtendBaseWidget(entry)
+	if text == "int" {
+		entry.SetPlaceHolder("0")
+	} else {
+		entry.SetPlaceHolder("0.00")
+	}
 	return entry
 }
 
@@ -90,53 +95,33 @@ func main() {
 	mainContent := createMainContent(db, table, lastBilanz)
 
 	myWindow.SetContent(mainContent)
-	myWindow.Resize(fyne.NewSize(1000, 600))
+	myWindow.Resize(fyne.NewSize(1200, 800))
 	myWindow.ShowAndRun()
 }
 
 // TODO: createMainContent functions needs to be cleaned up to make it more readable and maintainable
 func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne.Container {
-	papierGesamt := newNumericalEntry()
-	papierGesamt.SetPlaceHolder("0.00")
-	barGesamt := newNumericalEntry()
-	barGesamt.SetPlaceHolder("0.00")
-	ecGesamt := newNumericalEntry()
-	ecGesamt.SetPlaceHolder("0.00")
-	summeRollen := newNumericalEntry()
-	summeRollen.SetPlaceHolder("0.00")
-	summeKarte := newNumericalEntry()
-	summeKarte.SetPlaceHolder("0.00")
-	zBon := newNumericalEntry()
-	zBon.SetPlaceHolder("0.00")
-	sonderAus := newNumericalEntry()
-	sonderAus.SetPlaceHolder("0.00")
-	sonderEin := newNumericalEntry()
-	sonderEin.SetPlaceHolder("0.00")
-	stornoViel := newNumericalEntry()
-	stornoViel.SetPlaceHolder("0.00")
-	stornoWenig := newNumericalEntry()
-	stornoWenig.SetPlaceHolder("0.00")
-	papierZurueck := newNumericalEntry()
-	papierZurueck.SetPlaceHolder("0.00")
-	einzahlung := newNumericalEntry()
-	einzahlung.SetPlaceHolder("0.00")
-	tagesbilanz := newNumericalEntry()
-	tagesbilanz.SetPlaceHolder("0.00")
+	papierGesamt := newNumericalEntry("float")
+	barGesamt := newNumericalEntry("float")
+	ecGesamt := newNumericalEntry("float")
+	summeRollen := newNumericalEntry("float")
+	summeKarte := newNumericalEntry("float")
+	zBon := newNumericalEntry("float")
+	sonderAus := newNumericalEntry("float")
+	sonderEin := newNumericalEntry("float")
+	stornoViel := newNumericalEntry("float")
+	stornoWenig := newNumericalEntry("float")
+	papierZurueck := newNumericalEntry("float")
+	einzahlung := newNumericalEntry("float")
+	tagesbilanz := newNumericalEntry("float")
 
-	muenzgeld := newNumericalEntry()
-	muenzgeld.SetPlaceHolder("0.00")
-	fuenfScheine := newNumericalEntry()
-	fuenfScheine.SetPlaceHolder("0")
-	zehnScheine := newNumericalEntry()
-	zehnScheine.SetPlaceHolder("0")
-	zwanzigScheine := newNumericalEntry()
-	zwanzigScheine.SetPlaceHolder("0")
-	fuenfzigScheine := newNumericalEntry()
-	fuenfzigScheine.SetPlaceHolder("0")
-	hundertScheine := newNumericalEntry()
-	hundertScheine.SetPlaceHolder("0")
-	zweiHundertScheine := newNumericalEntry()
-	zweiHundertScheine.SetPlaceHolder("0")
+	muenzgeld := newNumericalEntry("float")
+	fuenfScheine := newNumericalEntry("int")
+	zehnScheine := newNumericalEntry("int")
+	zwanzigScheine := newNumericalEntry("int")
+	fuenfzigScheine := newNumericalEntry("int")
+	hundertScheine := newNumericalEntry("int")
+	zweiHundertScheine := newNumericalEntry("int")
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{
