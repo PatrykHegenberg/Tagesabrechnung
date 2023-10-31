@@ -206,12 +206,12 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 
 	form3 := &widget.Form{
 		Items: []*widget.FormItem{
-			{Text: "Papiergeld zurück in die Kasse", Widget: papierZurueck},
-			{Text: "Einzahlung auf Konto", Widget: einzahlung},
-			{Text: "Tagesbilanz vgl- Einnahme zu zBon", Widget: tagesbilanz},
 			{Text: "Gesamtes Papiergeld:", Widget: papierGesamt},
 			{Text: "Gesamtes Bargeld:", Widget: barGesamt},
 			{Text: "Gesamtes Bargeld mit EC:", Widget: ecGesamt},
+			{Text: "Papiergeld zurück:", Widget: papierZurueck},
+			{Text: "Einzahlung:", Widget: einzahlung},
+			{Text: "Tagesbilanz:", Widget: tagesbilanz},
 		},
 		OnSubmit: func() {
 			now := time.Now().Format("2006-01-02")
