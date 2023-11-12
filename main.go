@@ -114,6 +114,7 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 	papierZurueck := newNumericalEntry("float")
 	einzahlung := newNumericalEntry("float")
 	tagesbilanz := newNumericalEntry("float")
+	differenz := newNumericalEntry("float")
 
 	muenzgeld := newNumericalEntry("float")
 	fuenfScheine := newNumericalEntry("int")
@@ -134,7 +135,8 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 			{Text: "200€ Scheine:", Widget: zweiHundertScheine},
 		},
 		OnSubmit: func() {
-			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			// err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, papierGesamt.Text, barGesamt)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -143,6 +145,10 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 				log.Fatal(err)
 			}
 			err = updateEcGesamt(barGesamt.Text, summeKarte.Text, ecGesamt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = calcDifferenz(ecGesamt.Text, papierZurueck.Text, einzahlung.Text, summeKarte.Text, differenz)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -161,7 +167,7 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 			{Text: "Storno - zu wenig", Widget: stornoWenig},
 		},
 		OnSubmit: func() {
-			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, fuenfScheine.Text, zehnScheine.Text, zwanzigScheine.Text, fuenfzigScheine.Text, hundertScheine.Text, zweiHundertScheine.Text, barGesamt)
+			err := updateBarGesamt(summeRollen.Text, muenzgeld.Text, papierGesamt.Text, barGesamt)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -185,6 +191,10 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 			if err != nil {
 				log.Fatal(err)
 			}
+			err = calcDifferenz(ecGesamt.Text, papierZurueck.Text, einzahlung.Text, summeKarte.Text, differenz)
+			if err != nil {
+				log.Fatal(err)
+			}
 		},
 	}
 	form2.SubmitText = "Berechnen"
@@ -197,6 +207,7 @@ func createMainContent(db *sql.DB, table *widget.Table, lastBilanz string) *fyne
 			{Text: "Papiergeld zurück:", Widget: papierZurueck},
 			{Text: "Einzahlung:", Widget: einzahlung},
 			{Text: "Tagesbilanz:", Widget: tagesbilanz},
+			{Text: "Differenz:", Widget: differenz},
 		},
 		OnSubmit: func() {
 			now := time.Now().Format("2006-01-02")
@@ -339,7 +350,8 @@ func getTableData(db *sql.DB) [][]string {
 	return data
 }
 
-func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert string, barGesamt fyne.Widget) error {
+// func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zweihundert string, barGesamt fyne.Widget) error {
+func updateBarGesamt(rollen, muenz, papier string, barGesamt fyne.Widget) error {
 	rollenf, err := convertToFloat(rollen)
 	if err != nil {
 		log.Fatal("Error converting Rollengeld", err)
@@ -348,7 +360,7 @@ func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zwe
 	if err != nil {
 		log.Fatal("Error converting Münzgeld", err)
 	}
-	fuenff, err := convertToInt(fuenf)
+	/*fuenff, err := convertToInt(fuenf)
 	if err != nil {
 		log.Fatal("Error converting Fünf", err)
 	}
@@ -371,8 +383,12 @@ func updateBarGesamt(rollen, muenz, fuenf, zehn, zwanzig, fuenfzig, hundert, zwe
 	zweihundertf, err := convertToInt(zweihundert)
 	if err != nil {
 		log.Fatal("Error converting Zweihundert", err)
+	}*/
+	papierf, err := convertToFloat(papier)
+	if err != nil {
+		log.Fatal("Error converting Zweihundert", err)
 	}
-	result := rollenf + muenzf + float64(fuenff*5) + float64(zehnf*10) + float64(zwanzigf*20) + float64(fuenfzigf*50) + float64(hundertf*100) + float64(zweihundertf*200)
+	result := rollenf + muenzf + float64(papierf) // float64(zehnf*10) + float64(zwanzigf*20) + float64(fuenfzigf*50) + float64(hundertf*100) + float64(zweihundertf*200)
 
 	barGesamt.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
 	return nil
@@ -541,4 +557,26 @@ func updateTable(db *sql.DB) {
 		fmt.Println(idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld))
 		data = append(data, []string{idString, datum, fmt.Sprintf("%.2f", einzahlung), fmt.Sprintf("%.2f", tagesbilanz), fmt.Sprintf("%.2f", bargeld)})
 	}
+}
+
+func calcDifferenz(ecGesamt, papierZurueck, einzahlung, summeKarte string, differenz fyne.Widget) error {
+	ecf, err := convertToFloat(ecGesamt)
+	if err != nil {
+		return err
+	}
+	papierf, err := convertToFloat(papierZurueck)
+	if err != nil {
+		return err
+	}
+	einzahlungf, err := convertToFloat(einzahlung)
+	if err != nil {
+		return err
+	}
+	summeKartef, err := convertToFloat(summeKarte)
+	if err != nil {
+		return err
+	}
+	result := ecf - papierf - einzahlungf - summeKartef
+	differenz.(*numericalEntry).SetText(fmt.Sprintf("%.2f", result))
+	return nil
 }
