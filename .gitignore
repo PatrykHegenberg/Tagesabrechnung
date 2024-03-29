@@ -28,3 +28,6 @@ out/
 Tagesabrechnung
 
 dist/
+fyne-cross
+*.tar
+*.xz
